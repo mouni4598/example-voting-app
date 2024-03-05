@@ -1,0 +1,40 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- main
+
+stages:
+  - stage: Build
+    displayName: Build Stage
+    jobs:
+     - job: Build
+       displayName: Build job
+       pool: 
+         vmImage: 'ubuntu-latest'
+       steps:
+        - task: AzureCLI@2
+          displayName: 'Create ACR Repository'
+          inputs:
+            azureSubscription: 'Pay-As-You-Go (95cfc757-cb65-4511-a2eb-f32b5b741333)'
+            scriptType: 'bash'
+            scriptLocation: 'inlineScript'
+            inlineScript: |
+              az acr repository show --name mkuseakscr --repository app1 || az acr repository create --name mkuseakscr --repository app1
+
+        - task: DockerCompose@0
+          inputs:
+            containerregistrytype: 'Azure Container Registry'
+            azureSubscription: 'Pay-As-You-Go (95cfc757-cb65-4511-a2eb-f32b5b741333)'
+            azureContainerRegistry: '{"loginServer":"mkuseakscr.azurecr.io", "id" : "/subscriptions/95cfc757-cb65-4511-a2eb-f32b5b741333/resourceGroups/aks-rg/providers/Microsoft.ContainerRegistry/registries/mkuseakscr"}'
+            dockerComposeFile: '**/docker-compose.yml'
+            action: 'Run a Docker Compose command'
+            dockerComposeCommand: 'up -d'
+
+        - task: PublishBuildArtifacts@1
+          inputs:
+           PathtoPublish: '$(System.DefaultWorkingDirectory)/k8s-specifications'
+           ArtifactName: 'k8s-specifications'
+           publishLocation: 'Container'
